@@ -20,9 +20,14 @@ public:
 	Sock();
 	~Sock();
 	bool init(const addrStruct &ips);
-	in_addr get_addr();
+	int get_sockfd();
+	sockaddr_in get_addr();
+	void set_addr(const sockaddr_in &ip);
 	bool multicastIf(const in_addr &localInterface);
+	bool addMulticastGroup(const in_addr &local);
 	bool send(const char* databuf, const sockaddr_in dstaddr);
+	bool polling();
+	bool polling(Sock &dst);
 };
 
 #endif /* SOCKETS_H_ */

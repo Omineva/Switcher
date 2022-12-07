@@ -73,8 +73,8 @@ bool validatePort(char* str, sockaddr_in& addrInfoOut) {
 
 void usage() {
 
-	fprintf(stderr, "Usage: switcher [--mtg host port localhost localport] OR [--src host port --dst host port] "
-			"OR [--send srchost srcport dsthost dstport] OR [--recv host port]\n");
+	fprintf(stderr, "Usage: switcher [--mtg host port localhost localport] \n\tOR [--src host port --dst host port --local host port] "
+			"\n\tOR [--send srchost srcport dsthost dstport] \n\tOR [--recv host port]\n");
 	exit(1);
 }
 
@@ -120,7 +120,6 @@ void parseCmd(int argc, char *argv[], std::vector<addrStruct>& ipsOut, modes &mo
 			ipsOut.push_back(tmp);
 
 			modeOut = multicast_generator;
-			break;
 		}
 
 		if (!strcmp(*ptr,"--send")) {
@@ -161,6 +160,7 @@ void parseCmd(int argc, char *argv[], std::vector<addrStruct>& ipsOut, modes &mo
 			modeOut = receiver;
 		}
 
+		// TODO: переделать, сейчас можно пройти с одним параметром из трех обязательных
 		if (!strcmp(*ptr,"--src")) {
 			++ptr;
 
@@ -187,6 +187,21 @@ void parseCmd(int argc, char *argv[], std::vector<addrStruct>& ipsOut, modes &mo
 			if ( !(*ptr) || !(validatePort(*ptr,tmp.addrInfo)) ) usage();
 
 			tmp.key = dst;
+			ipsOut.push_back(tmp);
+			modeOut = switcher;
+		}
+
+		if (!strcmp(*ptr,"--local")) {
+			++ptr;
+
+			// check and save local IP address
+			if ( !(*ptr) || !(validateIp(*ptr,tmp.addrInfo))) usage();
+			++ptr;
+
+			// check and save local port
+			if ( !(*ptr) || !(validatePort(*ptr,tmp.addrInfo)) ) usage();
+
+			tmp.key = local;
 			ipsOut.push_back(tmp);
 			modeOut = switcher;
 		}

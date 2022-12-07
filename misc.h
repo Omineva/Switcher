@@ -23,6 +23,7 @@ enum cmdKeyword {
 	multicast,
 	src,
 	dst,
+	local,
 };
 
 enum modes {

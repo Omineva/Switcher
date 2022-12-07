@@ -23,12 +23,12 @@ int main(int argc, char *argv[]) {
 
 	parseCmd(argc,argv,ips,mode);
 
-	for (size_t i = 0; i < ips.size(); ++i) {
-		printf("ips.key = %d, ips.ipaddr = %u, mode = %d\n",ips[i].key,ips[i].addrInfo.sin_addr.s_addr, mode);
-		if ( isMulticast(ips[i].addrInfo.sin_addr) ) {
-			printf("ips[%ld].addrInfo.sin_addr = true\n",i);
-		}
-	}
+//	for (size_t i = 0; i < ips.size(); ++i) {
+//		printf("ips.key = %d, ips.ipaddr = %u, mode = %d\n",ips[i].key,ips[i].addrInfo.sin_addr.s_addr, mode);
+//		if ( isMulticast(ips[i].addrInfo.sin_addr) ) {
+//			printf("ips[%ld].addrInfo.sin_addr = true\n",i);
+//		}
+//	}
 
 	switch(mode) {
 	case sender:
@@ -74,8 +74,26 @@ int main(int argc, char *argv[]) {
 		break;
 	}
 	case receiver:
-		printf("receiver");
+	{
+		Sock dstSock;
+
+		if ( ips.size() == 1 && ips[0].key == dst ) {
+			if ( !dstSock.init(ips[0]) ) {
+				printf("Initialization failed. Try again later.\n");
+				exit(1);
+			}
+		}
+
+		// TODO: get local interface from comp
+		sockaddr_in localaddr;
+		inet_aton("192.168.0.152", &localaddr.sin_addr);
+		if ( isMulticast(dstSock.get_addr().sin_addr) ) {
+			dstSock.addMulticastGroup(localaddr.sin_addr);
+		}
+
+		dstSock.polling();
 		break;
+	}
 	case multicast_generator:
 	{
 		Sock mc;
@@ -93,7 +111,7 @@ int main(int argc, char *argv[]) {
 			}
 		}
 
-		if ( mc.multicastIf(mc.get_addr()) ) {
+		if ( mc.multicastIf(mc.get_addr().sin_addr) ) {
 
 			char databuf[80] = "Multicast datagram - 0";
 			int count = 0, ones = 0;
@@ -122,7 +140,33 @@ int main(int argc, char *argv[]) {
 		break;
 	}
 	case switcher:
+	{
+		Sock srcSock;
+		Sock dstSock;
+		sockaddr_in localaddr;
+
+		for (size_t i = 0; i < ips.size(); ++i) {
+			if ( ips[i].key == src ) {
+				if ( !srcSock.init(ips[i]) ) {
+					printf("Initialization failed. Try again later.\n");
+					exit(1);
+				}
+			}
+			if ( ips[i].key == dst ) {
+				dstSock.set_addr(ips[i].addrInfo);
+			}
+			if ( ips[i].key == local ) {
+				localaddr = ips[i].addrInfo;
+			}
+		}
+
+		if ( isMulticast(srcSock.get_addr().sin_addr) ) {
+			srcSock.addMulticastGroup(localaddr.sin_addr);
+		}
+
+		srcSock.polling(dstSock);
 		break;
+	}
 	default:
 		printf("Unknown situation. Program is terminated now.");
 		exit(1);
