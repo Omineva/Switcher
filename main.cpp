@@ -7,13 +7,6 @@
 
 #include "misc.h"
 #include "sockets.h"
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <cstring>
-#include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h>
 
 int main(int argc, char *argv[]) {
@@ -76,18 +69,23 @@ int main(int argc, char *argv[]) {
 	case receiver:
 	{
 		Sock dstSock;
+		sockaddr_in localaddr;
 
-		if ( ips.size() == 1 && ips[0].key == dst ) {
-			if ( !dstSock.init(ips[0]) ) {
-				printf("Initialization failed. Try again later.\n");
-				exit(1);
+		for( size_t i = 0; i < ips.size(); ++i ){
+
+			if( ips[i].key == dst ){
+				if( !dstSock.init(ips[i]) ) {
+					printf("Initialization failed. Try again later.\n");
+					exit(1);
+				}
+			}
+
+			if( ips[i].key == local ){
+				localaddr = ips[i].addrInfo;
 			}
 		}
 
-		// TODO: get local interface from comp
-		sockaddr_in localaddr;
-		inet_aton("192.168.0.152", &localaddr.sin_addr);
-		if ( isMulticast(dstSock.get_addr().sin_addr) ) {
+		if( isMulticast(dstSock.get_addr().sin_addr) ){
 			dstSock.addMulticastGroup(localaddr.sin_addr);
 		}
 

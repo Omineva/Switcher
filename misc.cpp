@@ -6,7 +6,6 @@
  */
 
 #include "misc.h"
-#include <iostream>			// TO DELETE
 
 bool validateIp(char* str, sockaddr_in& addrInfoOut) {
 
@@ -17,10 +16,11 @@ bool validateIp(char* str, sockaddr_in& addrInfoOut) {
 		memset(&addrInfoOut, 0, sizeof(addrInfoOut));
 		addrInfoOut.sin_family = AF_INET;
 		addrInfoOut.sin_addr = ip_to_num;
+		addrInfoOut.sin_port = 0;
 		result = true;
 	}
 	else {
-//TODO: адекватное сообщение влог
+//TODO: адекватное сообщение в лог
 		result = false;
 	}
 
@@ -33,6 +33,7 @@ bool validatePort(char* str, sockaddr_in& addrInfoOut) {
 	char* tmpPtr = str;
 	unsigned short port;
 
+//TODO: переделать в регулярку?...
 	while ( *tmpPtr != '\0' ) {
 		switch(*tmpPtr) {
 		case '0':
@@ -74,7 +75,7 @@ bool validatePort(char* str, sockaddr_in& addrInfoOut) {
 void usage() {
 
 	fprintf(stderr, "Usage: switcher [--mtg host port localhost localport] \n\tOR [--src host port --dst host port --local host port] "
-			"\n\tOR [--send srchost srcport dsthost dstport] \n\tOR [--recv host port]\n");
+			"\n\tOR [--send srchost srcport dsthost dstport] \n\tOR [--recv host port --iface name]\n");
 	exit(1);
 }
 
@@ -85,14 +86,67 @@ bool isMulticast(const in_addr ip) {
 	return ( *first >= 224 && *first <= 239) ? true : false;
 }
 
+// check if exists named interface and returns it's ONLY first ip-adress
+bool getIpForIface(const char* iname, char* bufferOut, sockaddr_in& addrInfoOut) {
+
+	bool result = false;
+	struct ifaddrs* ptr_ifaddrs = 0;
+
+	if( getifaddrs(&ptr_ifaddrs) != 0 ) {
+		perror("Error (get interface ip-addresses failed)");
+		freeifaddrs(ptr_ifaddrs);
+		return false;
+	}
+
+	for(	struct ifaddrs* ptr_entry = ptr_ifaddrs;
+			ptr_entry != 0;
+	        ptr_entry = ptr_entry->ifa_next
+	    )
+	{
+		sa_family_t address_family = ptr_entry->ifa_addr->sa_family;
+
+		if( !strcmp(iname,ptr_entry->ifa_name) && (address_family == AF_INET) ) {
+
+			if( ptr_entry->ifa_addr != 0 ){
+
+				/* Convert a Internet address in binary network format for interface
+				   type AF in buffer starting at CP to presentation form and place
+				   result in buffer of length LEN astarting at BUF.  */
+				if( inet_ntop(
+					address_family,
+					&((struct sockaddr_in*)(ptr_entry->ifa_addr))->sin_addr,
+					bufferOut,
+					INET_ADDRSTRLEN) == 0 ){
+						perror("Error (ip convert to string)");
+						result = false;
+						break;
+				}
+
+				sockaddr_in* tmp = (struct sockaddr_in*)(ptr_entry->ifa_addr);
+				addrInfoOut.sin_family = tmp->sin_family;
+				addrInfoOut.sin_addr = tmp->sin_addr;
+				addrInfoOut.sin_port = 0;
+
+				result = true;
+				break;
+			}
+		}
+	}
+	freeifaddrs(ptr_ifaddrs);
+	return result;
+}
+
 void parseCmd(int argc, char *argv[], std::vector<addrStruct>& ipsOut, modes &modeOut) {
 
 	char** ptr;
 	ptr = argv + 1;
 
+	if( argc == 1 ) usage();
+
 	while ( *ptr && *ptr[0] == '-') {
 
 		addrStruct tmp;
+
 		if (!strcmp(*ptr,"--mtg")) {
 			++ptr;
 
@@ -120,9 +174,8 @@ void parseCmd(int argc, char *argv[], std::vector<addrStruct>& ipsOut, modes &mo
 			ipsOut.push_back(tmp);
 
 			modeOut = multicast_generator;
-		}
 
-		if (!strcmp(*ptr,"--send")) {
+		} else if (!strcmp(*ptr,"--send")) {
 			++ptr;
 
 			// parse src host and port
@@ -144,9 +197,8 @@ void parseCmd(int argc, char *argv[], std::vector<addrStruct>& ipsOut, modes &mo
 			tmp.key = dst;
 			ipsOut.push_back(tmp);
 			modeOut = sender;
-		}
 
-		if (!strcmp(*ptr,"--recv")) {
+		} else if (!strcmp(*ptr,"--recv")) {
 			++ptr;
 
 			// parse src host and port
@@ -154,14 +206,27 @@ void parseCmd(int argc, char *argv[], std::vector<addrStruct>& ipsOut, modes &mo
 			++ptr;
 
 			if ( !(*ptr) || !(validatePort(*ptr,tmp.addrInfo)) ) usage();
+			++ptr;
 
 			tmp.key = dst;
 			ipsOut.push_back(tmp);
 			modeOut = receiver;
-		}
 
-		// TODO: переделать, сейчас можно пройти с одним параметром из трех обязательных
-		if (!strcmp(*ptr,"--src")) {
+			if ( *ptr && !strcmp(*ptr,"--iface") ) {
+				++ptr;
+				char buffer[INET_ADDRSTRLEN] = {0};
+				if( *ptr && getIpForIface(*ptr,buffer,tmp.addrInfo) ) {
+					printf("Uses ip-address: %s\n",buffer);
+					tmp.key = local;
+					ipsOut.push_back(tmp);
+				} else {
+					printf("Unkown interface.\n");
+					usage();
+				}
+			} else usage();
+
+		} else if (!strcmp(*ptr,"--src")) {
+// TODO: переделать, сейчас можно пройти с одним параметром из трех обязательных
 			++ptr;
 
 			// check and save IP address
@@ -174,9 +239,8 @@ void parseCmd(int argc, char *argv[], std::vector<addrStruct>& ipsOut, modes &mo
 			tmp.key = src;
 			ipsOut.push_back(tmp);
 			modeOut = switcher;
-		}
 
-		if (!strcmp(*ptr,"--dst")) {
+		} else if (!strcmp(*ptr,"--dst")) {
 			++ptr;
 
 			// check and save IP address
@@ -189,9 +253,8 @@ void parseCmd(int argc, char *argv[], std::vector<addrStruct>& ipsOut, modes &mo
 			tmp.key = dst;
 			ipsOut.push_back(tmp);
 			modeOut = switcher;
-		}
 
-		if (!strcmp(*ptr,"--local")) {
+		} else if (!strcmp(*ptr,"--local")) {
 			++ptr;
 
 			// check and save local IP address
@@ -204,7 +267,8 @@ void parseCmd(int argc, char *argv[], std::vector<addrStruct>& ipsOut, modes &mo
 			tmp.key = local;
 			ipsOut.push_back(tmp);
 			modeOut = switcher;
-		}
+
+		} else usage();
 
 		++ptr;
 	}

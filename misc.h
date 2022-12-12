@@ -13,6 +13,7 @@
 #include <cstdio>			// fprintf
 #include <cstring>			// strcmp
 #include <list>
+#include <ifaddrs.h>
 #include <netinet/in.h>		// sockaddr_in, in_addr, htons
 #include <stdlib.h>			// exit
 #include <string>
@@ -44,6 +45,7 @@ bool validateIp(char* str, sockaddr_in& addrInfoOut);
 bool validatePort(char* str, sockaddr_in& addrInfoOut);
 void usage();
 bool isMulticast(const in_addr ip);
+bool getIpForIface(const char* iname, char* bufferOut, sockaddr_in& addrInfoOut);
 void parseCmd(int argc, char *argv[], std::vector<addrStruct>& ipsOut, modes &modeOut);
 
 #endif /* MISC_H_ */
