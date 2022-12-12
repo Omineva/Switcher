@@ -74,8 +74,8 @@ bool validatePort(char* str, sockaddr_in& addrInfoOut) {
 
 void usage() {
 
-	fprintf(stderr, "Usage: switcher [--mtg host port localhost localport] \n\tOR [--src host port --dst host port --local host port] "
-			"\n\tOR [--send srchost srcport dsthost dstport] \n\tOR [--recv host port --iface name]\n");
+	fprintf(stderr, "Usage: switcher [--mtg host port --iface name] \n\tOR [--src host port --dst host port --iface name] "
+			"\n\tOR [--send host port --iface name] \n\tOR [--recv host port --iface name]\n");
 	exit(1);
 }
 
@@ -143,128 +143,92 @@ void parseCmd(int argc, char *argv[], std::vector<addrStruct>& ipsOut, modes &mo
 
 	if( argc == 1 ) usage();
 
-	while ( *ptr && *ptr[0] == '-') {
+	while( *ptr && *ptr[0] == '-' ){
 
 		addrStruct tmp;
 
-		if (!strcmp(*ptr,"--mtg")) {
+		if( !strcmp(*ptr,"--mtg") ){
 			++ptr;
 
 			// check and save multicast IP address
-			if ( !(*ptr) || !(validateIp(*ptr,tmp.addrInfo))) usage();
+			if( !(*ptr) || !(validateIp(*ptr,tmp.addrInfo)) ) usage();
 			++ptr;
 
 			// check and save multicast port
-			if ( !(*ptr) || !(validatePort(*ptr,tmp.addrInfo)) ) usage();
+			if( !(*ptr) || !(validatePort(*ptr,tmp.addrInfo)) ) usage();
 
-			if ( !(isMulticast(tmp.addrInfo.sin_addr)) ) usage();
+			if( !(isMulticast(tmp.addrInfo.sin_addr)) ) usage();
+
 			tmp.key = multicast;
 			ipsOut.push_back(tmp);
-			++ptr;
-
-			// check and save local IP address
-			if ( !(*ptr) || !(validateIp(*ptr,tmp.addrInfo))) usage();
-			++ptr;
-
-			// check and save local port
-			if ( !(*ptr) || !(validatePort(*ptr,tmp.addrInfo)) ) usage();
-
-			if ( isMulticast(tmp.addrInfo.sin_addr) ) usage();
-			tmp.key = src;
-			ipsOut.push_back(tmp);
-
 			modeOut = multicast_generator;
 
-		} else if (!strcmp(*ptr,"--send")) {
+		} else if( !strcmp(*ptr,"--send") ){
 			++ptr;
-
-			// parse src host and port
-			if ( !(*ptr) || !(validateIp(*ptr,tmp.addrInfo))) usage();
-			++ptr;
-
-			if ( !(*ptr) || !(validatePort(*ptr,tmp.addrInfo)) ) usage();
-			++ptr;
-
-			tmp.key = src;
-			ipsOut.push_back(tmp);
 
 			// parse dst host and port
-			if ( !(*ptr) || !(validateIp(*ptr,tmp.addrInfo))) usage();
+			if( !(*ptr) || !(validateIp(*ptr,tmp.addrInfo))) usage();
 			++ptr;
 
-			if ( !(*ptr) || !(validatePort(*ptr,tmp.addrInfo)) ) usage();
+			if( !(*ptr) || !(validatePort(*ptr,tmp.addrInfo)) ) usage();
 
 			tmp.key = dst;
 			ipsOut.push_back(tmp);
 			modeOut = sender;
 
-		} else if (!strcmp(*ptr,"--recv")) {
+		} else if( !strcmp(*ptr,"--iface") ){
+
+			++ptr;
+			char buffer[INET_ADDRSTRLEN] = {0};
+
+			if( *ptr && getIpForIface(*ptr,buffer,tmp.addrInfo) ) {
+				printf("Using ip-address: %s\n",buffer);
+
+				tmp.key = local;
+				ipsOut.push_back(tmp);
+
+			} else {
+				printf("Unkown interface.\n");
+				usage();
+			}
+		} else if( !strcmp(*ptr,"--recv") ){
 			++ptr;
 
-			// parse src host and port
-			if ( !(*ptr) || !(validateIp(*ptr,tmp.addrInfo))) usage();
+			if( !(*ptr) || !(validateIp(*ptr,tmp.addrInfo))) usage();
 			++ptr;
 
-			if ( !(*ptr) || !(validatePort(*ptr,tmp.addrInfo)) ) usage();
-			++ptr;
+			if( !(*ptr) || !(validatePort(*ptr,tmp.addrInfo)) ) usage();
 
-			tmp.key = dst;
+			tmp.key = src;
 			ipsOut.push_back(tmp);
 			modeOut = receiver;
 
-			if ( *ptr && !strcmp(*ptr,"--iface") ) {
-				++ptr;
-				char buffer[INET_ADDRSTRLEN] = {0};
-				if( *ptr && getIpForIface(*ptr,buffer,tmp.addrInfo) ) {
-					printf("Uses ip-address: %s\n",buffer);
-					tmp.key = local;
-					ipsOut.push_back(tmp);
-				} else {
-					printf("Unkown interface.\n");
-					usage();
-				}
-			} else usage();
-
-		} else if (!strcmp(*ptr,"--src")) {
+		} else if( !strcmp(*ptr,"--src") ){
 // TODO: переделать, сейчас можно пройти с одним параметром из трех обязательных
 			++ptr;
 
 			// check and save IP address
-			if ( !(*ptr) || !(validateIp(*ptr,tmp.addrInfo))) usage();
+			if( !(*ptr) || !(validateIp(*ptr,tmp.addrInfo)) ) usage();
 			++ptr;
 
 			// check and save port
-			if ( !(*ptr) || !(validatePort(*ptr,tmp.addrInfo)) ) usage();
+			if( !(*ptr) || !(validatePort(*ptr,tmp.addrInfo)) ) usage();
 
 			tmp.key = src;
 			ipsOut.push_back(tmp);
 			modeOut = switcher;
 
-		} else if (!strcmp(*ptr,"--dst")) {
+		} else if( !strcmp(*ptr,"--dst") ){
 			++ptr;
 
 			// check and save IP address
-			if ( !(*ptr) || !(validateIp(*ptr,tmp.addrInfo))) usage();
+			if( !(*ptr) || !(validateIp(*ptr,tmp.addrInfo))) usage();
 			++ptr;
 
 			// check and save port
-			if ( !(*ptr) || !(validatePort(*ptr,tmp.addrInfo)) ) usage();
+			if( !(*ptr) || !(validatePort(*ptr,tmp.addrInfo)) ) usage();
 
 			tmp.key = dst;
-			ipsOut.push_back(tmp);
-			modeOut = switcher;
-
-		} else if (!strcmp(*ptr,"--local")) {
-			++ptr;
-
-			// check and save local IP address
-			if ( !(*ptr) || !(validateIp(*ptr,tmp.addrInfo))) usage();
-			++ptr;
-
-			// check and save local port
-			if ( !(*ptr) || !(validatePort(*ptr,tmp.addrInfo)) ) usage();
-
-			tmp.key = local;
 			ipsOut.push_back(tmp);
 			modeOut = switcher;
 

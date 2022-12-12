@@ -7,9 +7,6 @@
 
 #include "misc.h"
 #include "sockets.h"
-#include <cstdio>
-#include <netinet/in.h>
-#include <sys/socket.h>
 #include <sys/poll.h>
 #include <unistd.h>
 
@@ -101,7 +98,7 @@ bool Sock::send(const char* databuf, const sockaddr_in dstaddr) {
 		int res = sendto(m_sockfd, databuf, datalen, 0, (sockaddr*)&dstaddr, sizeof(dstaddr));
 		printf("sending datagram: %s\n", databuf);
 		if ( res < 0 ) {
-			perror("Error (sending multicast message failed)");
+			perror("Error (sending message failed)");
 			close(m_sockfd);
 			m_sockfd = -1;
 			return false;

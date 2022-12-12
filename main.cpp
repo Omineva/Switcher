@@ -16,30 +16,29 @@ int main(int argc, char *argv[]) {
 
 	parseCmd(argc,argv,ips,mode);
 
-//	for (size_t i = 0; i < ips.size(); ++i) {
-//		printf("ips.key = %d, ips.ipaddr = %u, mode = %d\n",ips[i].key,ips[i].addrInfo.sin_addr.s_addr, mode);
-//		if ( isMulticast(ips[i].addrInfo.sin_addr) ) {
-//			printf("ips[%ld].addrInfo.sin_addr = true\n",i);
-//		}
-//	}
-
-	switch(mode) {
+	switch( mode ){
 	case sender:
 	{
-		// TODO: add check of ips in array
-		Sock srcSock;
+		size_t argNum = ips.size();
+		if( argNum != 2 ) usage();
+
+		Sock outgoingSock;
 		sockaddr_in dstaddr;
 
-		for (size_t i = 0; i < ips.size(); ++i) {
-			if ( ips[i].key == src ) {
-				if ( !srcSock.init(ips[i]) ) {
+		for( size_t i = 0; i < argNum; ++i ){
+
+			if( ips[i].key == local ){
+				if( !outgoingSock.init(ips[i]) ){
 					printf("Initialization failed. Try again later.\n");
 					exit(1);
 				}
 			}
-			if ( ips[i].key == dst ) {
+
+			if( ips[i].key == dst ){
 				dstaddr = ips[i].addrInfo;
 			}
+
+			if( !(ips[i].key == local || ips[i].key == dst) ) usage();
 		}
 
 		char databuf[80] = "Unicast datagram - 0";
@@ -53,7 +52,7 @@ int main(int argc, char *argv[]) {
 			}
 
 			// sending datagrams to dstaddr
-			if ( !srcSock.send(databuf, dstaddr) ) {
+			if ( !outgoingSock.send(databuf, dstaddr) ) {
 				printf("Can't send datagram. Aborted.\n");
 				break;
 			}
@@ -68,13 +67,16 @@ int main(int argc, char *argv[]) {
 	}
 	case receiver:
 	{
-		Sock dstSock;
+		size_t argNum = ips.size();
+		if( argNum != 2 ) usage();
+
+		Sock incomingSock;
 		sockaddr_in localaddr;
 
-		for( size_t i = 0; i < ips.size(); ++i ){
+		for( size_t i = 0; i < argNum; ++i ){
 
-			if( ips[i].key == dst ){
-				if( !dstSock.init(ips[i]) ) {
+			if( ips[i].key == src ){
+				if( !incomingSock.init(ips[i]) ) {
 					printf("Initialization failed. Try again later.\n");
 					exit(1);
 				}
@@ -83,33 +85,42 @@ int main(int argc, char *argv[]) {
 			if( ips[i].key == local ){
 				localaddr = ips[i].addrInfo;
 			}
+
+			if( !(ips[i].key == local || ips[i].key == src) ) usage();
 		}
 
-		if( isMulticast(dstSock.get_addr().sin_addr) ){
-			dstSock.addMulticastGroup(localaddr.sin_addr);
+		if( isMulticast(incomingSock.get_addr().sin_addr) ){
+			incomingSock.addMulticastGroup(localaddr.sin_addr);
 		}
 
-		dstSock.polling();
+		incomingSock.polling();
 		break;
 	}
 	case multicast_generator:
 	{
+		size_t argNum = ips.size();
+		if( argNum != 2 ) usage();
+
 		Sock mc;
 		sockaddr_in multiaddr;
 
-		for (size_t i = 0; i < ips.size(); ++i) {
-			if ( ips[i].key == multicast ) {
+		for( size_t i = 0; i < argNum; ++i ){
+
+			if( ips[i].key == multicast ){
 				multiaddr = ips[i].addrInfo;
 			}
-			if ( ips[i].key == src ) {
-				if ( !mc.init(ips[i]) ) {
+
+			if( ips[i].key == local ){
+				if( !mc.init(ips[i]) ){
 					printf("Initialization failed. Try again later.\n");
 					exit(1);
 				}
 			}
+
+			if( !(ips[i].key == local || ips[i].key == multicast) ) usage();
 		}
 
-		if ( mc.multicastIf(mc.get_addr().sin_addr) ) {
+		if( mc.multicastIf(mc.get_addr().sin_addr) ){
 
 			char databuf[80] = "Multicast datagram - 0";
 			int count = 0, ones = 0;
@@ -134,31 +145,38 @@ int main(int argc, char *argv[]) {
 				sleep(2);
 			}
 		}
-
 		break;
 	}
 	case switcher:
 	{
+		size_t argNum = ips.size();
+		if( argNum != 3 ) usage();
+
 		Sock srcSock;
 		Sock dstSock;
 		sockaddr_in localaddr;
 
-		for (size_t i = 0; i < ips.size(); ++i) {
-			if ( ips[i].key == src ) {
-				if ( !srcSock.init(ips[i]) ) {
+		for( size_t i = 0; i < argNum; ++i ){
+
+			if( ips[i].key == src ){
+				if( !srcSock.init(ips[i]) ){
 					printf("Initialization failed. Try again later.\n");
 					exit(1);
 				}
 			}
-			if ( ips[i].key == dst ) {
+
+			if( ips[i].key == dst ){
 				dstSock.set_addr(ips[i].addrInfo);
 			}
-			if ( ips[i].key == local ) {
+
+			if( ips[i].key == local ){
 				localaddr = ips[i].addrInfo;
 			}
+
+			if( !(ips[i].key == src || ips[i].key == dst || ips[i].key == local) ) usage();
 		}
 
-		if ( isMulticast(srcSock.get_addr().sin_addr) ) {
+		if( isMulticast(srcSock.get_addr().sin_addr) ){
 			srcSock.addMulticastGroup(localaddr.sin_addr);
 		}
 
