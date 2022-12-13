@@ -204,7 +204,6 @@ void parseCmd(int argc, char *argv[], std::vector<addrStruct>& ipsOut, modes &mo
 			modeOut = receiver;
 
 		} else if( !strcmp(*ptr,"--src") ){
-// TODO: переделать, сейчас можно пройти с одним параметром из трех обязательных
 			++ptr;
 
 			// check and save IP address

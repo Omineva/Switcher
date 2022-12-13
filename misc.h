@@ -12,8 +12,7 @@
 #include <cerrno>
 #include <cstdio>			// fprintf
 #include <cstring>			// strcmp
-#include <list>
-#include <ifaddrs.h>
+#include <ifaddrs.h>		// getifaddrs, ifaddrs
 #include <netinet/in.h>		// sockaddr_in, in_addr, htons
 #include <stdlib.h>			// exit
 #include <string>
@@ -29,10 +28,10 @@ enum cmdKeyword {
 
 enum modes {
 
-	multicast_generator,	// [--mtg host port localhost localport]
-	sender,					// [--send srchost srcport dsthost dstport]
-	receiver,				// [--recv host port]
-	switcher,				// [--src host port --dst host port]
+	multicast_generator,	// [--mtg host port --iface name]
+	sender,					// [--send host port --iface name]
+	receiver,				// [--recv host port --iface name]
+	switcher,				// [--src host port --dst host port --iface name]
 };
 
 struct addrStruct {

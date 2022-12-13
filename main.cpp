@@ -7,6 +7,7 @@
 
 #include "misc.h"
 #include "sockets.h"
+#include <sstream>
 #include <unistd.h>
 
 int main(int argc, char *argv[]) {
@@ -41,27 +42,24 @@ int main(int argc, char *argv[]) {
 			if( !(ips[i].key == local || ips[i].key == dst) ) usage();
 		}
 
-		char databuf[80] = "Unicast datagram - 0";
-		int count = 0, ones = 0;
+		int count = 0;
+		std::string templateDatagramMsg = "Unicast datagram №";
 
 		while (true) {
-			databuf[19] = '0' + ones;
-			++ones;
-			if ( ones == 10 ) {
-				ones = 0;
-			}
+
+			std::string buff = templateDatagramMsg;
+			std::ostringstream convert;
+			convert << count;
+			buff += convert.str();
 
 			// sending datagrams to dstaddr
-			if ( !outgoingSock.send(databuf, dstaddr) ) {
+			if ( !outgoingSock.send(buff.c_str(), dstaddr) ) {
 				printf("Can't send datagram. Aborted.\n");
 				break;
 			}
 
 			++count;
-			if ( count == 100 ) {
-				break;
-			}
-			sleep(2);
+			sleep(1);
 		}
 		break;
 	}
