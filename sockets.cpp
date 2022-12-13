@@ -100,6 +100,7 @@ bool Sock::addMulticastGroup(const in_addr &local) {
 bool Sock::send(const char* databuf, const sockaddr_in dstaddr) {
 
 	if( m_sockfd != -1 ){
+		// assumption: the result of sending is always equal to MSGSIZE
 		if( sendto(m_sockfd, databuf, MSGSIZE, 0, (sockaddr*)&dstaddr, sizeof(dstaddr)) < 0 ){
 			perror("Error (sending message failed)");
 			sockClose();
@@ -124,6 +125,7 @@ bool Sock::polling() {
 	while (true) {
 		if( poll(fds, numfds, timeout) > 0 ){
 			if( m_sockfd != -1 ){
+				// assumption: the result of receiving is always equal to MSGSIZE
 				if( read(m_sockfd, databuf, sizeof(databuf)) < 0 ){
 					perror("Error (reading message failed)");
 					sockClose();
@@ -153,6 +155,7 @@ bool Sock::polling(Sock &dst) {
 	while (true) {
 		if( poll(fds, numfds, timeout) > 0 ){
 			if( m_sockfd != -1 ){
+				// assumption: the result of receiving is always equal to MSGSIZE
 				if( read(m_sockfd, databuf, sizeof(databuf)) < 0 ){
 					perror("Error (reading message failed)");
 					sockClose();
@@ -161,6 +164,7 @@ bool Sock::polling(Sock &dst) {
 			}
 			if( dst.get_sockfd() != -1){
 				sockaddr_in tmp = dst.get_addr();
+				// assumption: the result of sending is always equal to MSGSIZE
 				if( sendto(dst.get_sockfd(), databuf, sizeof(databuf), 0,(sockaddr*)&tmp,sizeof(tmp)) < 0 ){
 					perror("Error (re-sending message failed)");
 					dst.sockClose();
