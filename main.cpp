@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
 			if( ips[i].key == local ){
 				if( !outgoingSock.init(ips[i]) ){
 					printf("Initialization failed. Try again later.\n");
-					// TODO: destroy objects
+					outgoingSock.sockClose();
 					exit(1);
 				}
 			}
@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
 				templateDatagramMsg = "Mulicast datagram №";
 			} else {
 				printf("Can't set interface for sending outbound multicast datagrams.\n");
-				// TODO: destroy objects
+				outgoingSock.sockClose();
 				exit(1);
 			}
 		} else {
@@ -67,9 +67,10 @@ int main(int argc, char *argv[]) {
 			buff += convert.str();
 
 			// sending datagrams to dstaddr
-			if ( !outgoingSock.send(buff.c_str(), dstaddr) ) {
+			if( !outgoingSock.send(buff.c_str(), dstaddr) ){
 				printf("Can't send datagram. Aborted.\n");
-				break;
+				outgoingSock.sockClose();
+				exit(1);
 			}
 
 			++count;
@@ -90,7 +91,7 @@ int main(int argc, char *argv[]) {
 			if( ips[i].key == src ){
 				if( !incomingSock.init(ips[i]) ) {
 					printf("Initialization failed. Try again later.\n");
-					// TODO: destroy objects
+					incomingSock.sockClose();
 					exit(1);
 				}
 			}
@@ -106,7 +107,7 @@ int main(int argc, char *argv[]) {
 		if( isMulticast(incomingSock.get_addr().sin_addr) ){
 			if( !incomingSock.addMulticastGroup(localaddr.sin_addr) ){
 				printf("Can't join interface for receiving inbound multicast datagrams.\n");
-				// TODO: destroy objects
+				incomingSock.sockClose();
 				exit(1);
 			}
 		}
@@ -127,7 +128,7 @@ int main(int argc, char *argv[]) {
 			if( ips[i].key == src ){
 				if( !srcSock.init(ips[i]) ){
 					printf("Initialization failed. Try again later.\n");
-					// TODO: destroy objects
+					srcSock.sockClose();
 					exit(1);
 				}
 			}
@@ -148,7 +149,7 @@ int main(int argc, char *argv[]) {
 		if( isMulticast(srcSock.get_addr().sin_addr) ){
 			if( !srcSock.addMulticastGroup(srcSock.get_localIpAddr().sin_addr) ){
 				printf("Can't join interface for receiving inbound multicast datagrams.\n");
-				// TODO: destroy objects
+				srcSock.sockClose();
 				exit(1);
 			}
 		}
@@ -157,7 +158,7 @@ int main(int argc, char *argv[]) {
 		if( isMulticast(dstSock.get_addr().sin_addr) ){
 			if( !dstSock.multicastIf(dstSock.get_localIpAddr().sin_addr) ){
 				printf("Can't set interface for sending outbound multicast datagrams.\n");
-				// TODO: destroy objects
+				dstSock.sockClose();
 				exit(1);
 			}
 		}
@@ -170,7 +171,6 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 
-	// TODO: destroy all
 	return 0;
 }
 

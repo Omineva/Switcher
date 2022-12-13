@@ -12,14 +12,13 @@ bool validateIp(char* str, sockaddr_in& addrInfoOut) {
 	bool result;
 	in_addr ip_to_num;
 
-	if ( inet_pton(AF_INET, str, &ip_to_num) > 0 ) {
+	if( inet_pton(AF_INET, str, &ip_to_num) > 0 ){
 		memset(&addrInfoOut, 0, sizeof(addrInfoOut));
 		addrInfoOut.sin_family = AF_INET;
 		addrInfoOut.sin_addr = ip_to_num;
 		addrInfoOut.sin_port = 0;
 		result = true;
-	}
-	else {
+	} else {
 //TODO: адекватное сообщение в лог
 		result = false;
 	}
@@ -53,17 +52,16 @@ bool validatePort(char* str, sockaddr_in& addrInfoOut) {
 			result = false;
 			break;
 		}
-		if ( !result ) break;
+		if( !result ) break;
 		++tmpPtr;
 	}
 
-	if ( result ) {
+	if( result ){
 		int tmp = atoi(str);
-		if ( tmp >= 0 && tmp < 65536 ) {
+		if( tmp >= 0 && tmp < 65536 ){
 			port = static_cast<unsigned short>(tmp);
 			addrInfoOut.sin_port = htons(port);
-		}
-		else {
+		} else {
 //TODO: адекватное сообщение в лог
 			result = false;
 		}

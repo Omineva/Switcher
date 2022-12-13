@@ -13,13 +13,10 @@
 
 class Sock {
 
-	int m_sockfd;
-	sockaddr_in m_ipaddr;
-	sockaddr_in m_localip;
-
 public:
 	Sock();
 	~Sock();
+	void sockClose();
 	bool init(const addrStruct &ips);
 	int get_sockfd();
 	sockaddr_in get_addr();
@@ -31,6 +28,11 @@ public:
 	bool send(const char* databuf, const sockaddr_in dstaddr);
 	bool polling();
 	bool polling(Sock &dst);
+
+private:
+	int m_sockfd;
+	sockaddr_in m_ipaddr;
+	sockaddr_in m_localip;
 };
 
 #endif /* SOCKETS_H_ */

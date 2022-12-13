@@ -13,7 +13,7 @@
 Sock::Sock() {
 
 	m_sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-	if ( m_sockfd < 0 ) {
+	if( m_sockfd < 0 ){
 		perror("Error (create socket failed)");
 		exit(1);
 	}
@@ -21,21 +21,24 @@ Sock::Sock() {
 
 Sock::~Sock() {
 
-// TODO: destroy object
+	sockClose();
+}
+
+void Sock::sockClose() {
+
+	close(m_sockfd);
+	m_sockfd = -1;
 }
 
 bool Sock::init(const addrStruct &ips) {
 
 	m_ipaddr = ips.addrInfo;
 
-	int res = bind(m_sockfd, (sockaddr*)&m_ipaddr, sizeof(m_ipaddr));
-	if ( res != 0 ) {
+	if( bind(m_sockfd, (sockaddr*)&m_ipaddr, sizeof(m_ipaddr)) != 0 ){
 		perror("Error (bind failed)");
-		close(m_sockfd);
-		m_sockfd = -1;
+		sockClose();
 		return false;
 	}
-
 	return true;
 }
 
@@ -66,16 +69,13 @@ void Sock::set_localIpAddr(const sockaddr_in &ip) {
 
 bool Sock::multicastIf(const in_addr &localInterface) {
 
-	if ( m_sockfd != -1 ) {
-		int res = setsockopt(m_sockfd, IPPROTO_IP, IP_MULTICAST_IF,(char *)&localInterface,sizeof(localInterface));
-		if ( res != 0 ) {
+	if( m_sockfd != -1 ){
+		if( setsockopt(m_sockfd, IPPROTO_IP, IP_MULTICAST_IF,(char *)&localInterface,sizeof(localInterface)) != 0 ){
 			perror("Error (setting up multicast interface failed)");
-			close(m_sockfd);
-			m_sockfd = -1;
+			sockClose();
 			return false;
 		}
-	}
-	else return false;
+	} else return false;
 
 	return true;
 }
@@ -86,42 +86,34 @@ bool Sock::addMulticastGroup(const in_addr &local) {
 	group.imr_multiaddr = m_ipaddr.sin_addr;
 	group.imr_interface = local;
 
-	if ( m_sockfd != -1 ) {
-		int res = setsockopt(m_sockfd, IPPROTO_IP, IP_ADD_MEMBERSHIP,(char *)&group, sizeof(group));
-		if ( res != 0 ) {
+	if( m_sockfd != -1 ){
+		if( setsockopt(m_sockfd, IPPROTO_IP, IP_ADD_MEMBERSHIP,(char *)&group, sizeof(group)) != 0 ){
 			perror("Error (setting up IP_ADD_MEMBERSHIP failed)");
-			close(m_sockfd);
-			m_sockfd = -1;
+			sockClose();
 			return false;
 		}
-	}
-	else return false;
+	} else return false;
 
 	return true;
 }
 
 bool Sock::send(const char* databuf, const sockaddr_in dstaddr) {
 
-	int datalen = 80;
-	if ( m_sockfd != -1 ) {
-		int res = sendto(m_sockfd, databuf, datalen, 0, (sockaddr*)&dstaddr, sizeof(dstaddr));
-		printf("sending datagram: %s\n", databuf);
-		if ( res < 0 ) {
+	if( m_sockfd != -1 ){
+		if( sendto(m_sockfd, databuf, MSGSIZE, 0, (sockaddr*)&dstaddr, sizeof(dstaddr)) < 0 ){
 			perror("Error (sending message failed)");
-			close(m_sockfd);
-			m_sockfd = -1;
+			sockClose();
 			return false;
-		}
-	}
-	else return false;
+		} else printf("sending datagram: %s\n", databuf);
+	} else return false;
 
 	return true;
 }
 
 bool Sock::polling() {
 
-	char databuf[80];
-	struct pollfd fds[2];
+	char databuf[MSGSIZE];
+	struct pollfd fds[1];
 	int numfds = 1;
 	int timeout = -1;
 
@@ -130,24 +122,17 @@ bool Sock::polling() {
 	fds[0].events = POLLIN;
 
 	while (true) {
-
-		if ( poll(fds, numfds, timeout) > 0 ) {
-
-			if ( m_sockfd != -1 ) {
-				int res = read(m_sockfd, databuf, sizeof(databuf));
-				printf("received datagram: %s\n",databuf);
-				if ( res < 0 ) {
+		if( poll(fds, numfds, timeout) > 0 ){
+			if( m_sockfd != -1 ){
+				if( read(m_sockfd, databuf, sizeof(databuf)) < 0 ){
 					perror("Error (reading message failed)");
-					close(m_sockfd);
-					m_sockfd = -1;
+					sockClose();
 					return false;
-				}
+				} else printf("received datagram: %s\n",databuf);
 			}
-		}
-		else {
+		} else {
 			perror("No poll events");
-			close(m_sockfd);
-			m_sockfd = -1;
+			sockClose();
 			break;
 		}
 	}
@@ -156,8 +141,8 @@ bool Sock::polling() {
 
 bool Sock::polling(Sock &dst) {
 
-	char databuf[80];
-	struct pollfd fds[2];
+	char databuf[MSGSIZE];
+	struct pollfd fds[1];
 	int numfds = 1;
 	int timeout = -1;
 
@@ -166,35 +151,25 @@ bool Sock::polling(Sock &dst) {
 	fds[0].events = POLLIN;
 
 	while (true) {
-
-		if ( poll(fds, numfds, timeout) > 0 ) {
-
-			int res;
-			if ( m_sockfd != -1 ) {
-				res = read(m_sockfd, databuf, sizeof(databuf));
-				printf("received datagram: %s\n",databuf);
-				if ( res < 0 ) {
+		if( poll(fds, numfds, timeout) > 0 ){
+			if( m_sockfd != -1 ){
+				if( read(m_sockfd, databuf, sizeof(databuf)) < 0 ){
 					perror("Error (reading message failed)");
-					close(m_sockfd);
-					m_sockfd = -1;
+					sockClose();
 					return false;
-				}
+				} else printf("received datagram: %s\n",databuf);
 			}
-			if ( dst.get_sockfd() != -1) {
+			if( dst.get_sockfd() != -1){
 				sockaddr_in tmp = dst.get_addr();
-				res = sendto(dst.get_sockfd(), databuf, sizeof(databuf), 0,(sockaddr*)&tmp,sizeof(tmp));
-				printf("re-sent datagram: %s\n\n",databuf);
-				if ( res < 0 ) {
+				if( sendto(dst.get_sockfd(), databuf, sizeof(databuf), 0,(sockaddr*)&tmp,sizeof(tmp)) < 0 ){
 					perror("Error (re-sending message failed)");
-					close(dst.get_sockfd());
+					dst.sockClose();
 					return false;
-				}
+				} else printf("re-sent datagram: %s\n\n",databuf);
 			}
-		}
-		else {
+		} else {
 			perror("No poll events");
-			close(m_sockfd);
-			m_sockfd = -1;
+			sockClose();
 			break;
 		}
 	}

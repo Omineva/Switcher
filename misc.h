@@ -38,6 +38,9 @@ struct addrStruct {
 	cmdKeyword key;
 };
 
+// size of data in datagram
+const int MSGSIZE = 100;
+
 bool validateIp(char* str, sockaddr_in& addrInfoOut);
 bool validatePort(char* str, sockaddr_in& addrInfoOut);
 void usage();
