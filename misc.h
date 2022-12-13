@@ -20,7 +20,6 @@
 
 enum cmdKeyword {
 
-	multicast,
 	src,
 	dst,
 	local,
@@ -28,7 +27,6 @@ enum cmdKeyword {
 
 enum modes {
 
-	multicast_generator,	// [--mtg host port --iface name]
 	sender,					// [--send host port --iface name]
 	receiver,				// [--recv host port --iface name]
 	switcher,				// [--src host port --dst host port --iface name]

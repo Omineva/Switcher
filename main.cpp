@@ -31,6 +31,7 @@ int main(int argc, char *argv[]) {
 			if( ips[i].key == local ){
 				if( !outgoingSock.init(ips[i]) ){
 					printf("Initialization failed. Try again later.\n");
+					// TODO: destroy objects
 					exit(1);
 				}
 			}
@@ -43,7 +44,20 @@ int main(int argc, char *argv[]) {
 		}
 
 		int count = 0;
-		std::string templateDatagramMsg = "Unicast datagram №";
+		std::string templateDatagramMsg;
+
+		// check if dstaddr is multicast => to set the interface for sending outbound multicast datagrams
+		if( isMulticast(dstaddr.sin_addr) ){
+			if( outgoingSock.multicastIf(outgoingSock.get_addr().sin_addr) ){
+				templateDatagramMsg = "Mulicast datagram №";
+			} else {
+				printf("Can't set interface for sending outbound multicast datagrams.\n");
+				// TODO: destroy objects
+				exit(1);
+			}
+		} else {
+			templateDatagramMsg = "Unicast datagram №";
+		}
 
 		while (true) {
 
@@ -76,6 +90,7 @@ int main(int argc, char *argv[]) {
 			if( ips[i].key == src ){
 				if( !incomingSock.init(ips[i]) ) {
 					printf("Initialization failed. Try again later.\n");
+					// TODO: destroy objects
 					exit(1);
 				}
 			}
@@ -87,62 +102,16 @@ int main(int argc, char *argv[]) {
 			if( !(ips[i].key == local || ips[i].key == src) ) usage();
 		}
 
+		// check receiving from multicast group => to join a multicast group on a local interface to receive multicast datagrams
 		if( isMulticast(incomingSock.get_addr().sin_addr) ){
-			incomingSock.addMulticastGroup(localaddr.sin_addr);
+			if( !incomingSock.addMulticastGroup(localaddr.sin_addr) ){
+				printf("Can't join interface for receiving inbound multicast datagrams.\n");
+				// TODO: destroy objects
+				exit(1);
+			}
 		}
 
 		incomingSock.polling();
-		break;
-	}
-	case multicast_generator:
-	{
-		size_t argNum = ips.size();
-		if( argNum != 2 ) usage();
-
-		Sock mc;
-		sockaddr_in multiaddr;
-
-		for( size_t i = 0; i < argNum; ++i ){
-
-			if( ips[i].key == multicast ){
-				multiaddr = ips[i].addrInfo;
-			}
-
-			if( ips[i].key == local ){
-				if( !mc.init(ips[i]) ){
-					printf("Initialization failed. Try again later.\n");
-					exit(1);
-				}
-			}
-
-			if( !(ips[i].key == local || ips[i].key == multicast) ) usage();
-		}
-
-		if( mc.multicastIf(mc.get_addr().sin_addr) ){
-
-			char databuf[80] = "Multicast datagram - 0";
-			int count = 0, ones = 0;
-
-			while (true) {
-				databuf[21] = '0' + ones;
-				++ones;
-				if ( ones == 10 ) {
-					ones = 0;
-				}
-
-				// sending datagrams to multicast addr
-				if ( !mc.send(databuf, multiaddr) ) {
-					printf("Can't send datagram. Aborted.\n");
-					break;
-				}
-
-				++count;
-				if ( count == 100 ) {
-					break;
-				}
-				sleep(2);
-			}
-		}
 		break;
 	}
 	case switcher:
@@ -152,13 +121,13 @@ int main(int argc, char *argv[]) {
 
 		Sock srcSock;
 		Sock dstSock;
-		sockaddr_in localaddr;
 
 		for( size_t i = 0; i < argNum; ++i ){
 
 			if( ips[i].key == src ){
 				if( !srcSock.init(ips[i]) ){
 					printf("Initialization failed. Try again later.\n");
+					// TODO: destroy objects
 					exit(1);
 				}
 			}
@@ -168,14 +137,29 @@ int main(int argc, char *argv[]) {
 			}
 
 			if( ips[i].key == local ){
-				localaddr = ips[i].addrInfo;
+				srcSock.set_localIpAddr(ips[i].addrInfo);
+				dstSock.set_localIpAddr(ips[i].addrInfo);
 			}
 
 			if( !(ips[i].key == src || ips[i].key == dst || ips[i].key == local) ) usage();
 		}
 
+		// check if srcaddr is multicast => to join a multicast group on a local interface to receive multicast datagrams
 		if( isMulticast(srcSock.get_addr().sin_addr) ){
-			srcSock.addMulticastGroup(localaddr.sin_addr);
+			if( !srcSock.addMulticastGroup(srcSock.get_localIpAddr().sin_addr) ){
+				printf("Can't join interface for receiving inbound multicast datagrams.\n");
+				// TODO: destroy objects
+				exit(1);
+			}
+		}
+
+		// check if dstaddr is multicast => to set the interface for sending outbound multicast datagrams
+		if( isMulticast(dstSock.get_addr().sin_addr) ){
+			if( !dstSock.multicastIf(dstSock.get_localIpAddr().sin_addr) ){
+				printf("Can't set interface for sending outbound multicast datagrams.\n");
+				// TODO: destroy objects
+				exit(1);
+			}
 		}
 
 		srcSock.polling(dstSock);

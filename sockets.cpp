@@ -49,9 +49,19 @@ sockaddr_in Sock::get_addr() {
 	return m_ipaddr;
 }
 
+sockaddr_in Sock::get_localIpAddr() {
+
+	return m_localip;
+}
+
 void Sock::set_addr(const sockaddr_in &ip) {
 
 	m_ipaddr = ip;
+}
+
+void Sock::set_localIpAddr(const sockaddr_in &ip) {
+
+	m_localip = ip;
 }
 
 bool Sock::multicastIf(const in_addr &localInterface) {
@@ -78,7 +88,6 @@ bool Sock::addMulticastGroup(const in_addr &local) {
 
 	if ( m_sockfd != -1 ) {
 		int res = setsockopt(m_sockfd, IPPROTO_IP, IP_ADD_MEMBERSHIP,(char *)&group, sizeof(group));
-		printf("setsockopt (IP_ADD_MEMBERSHIP) res = %d\n", res);
 		if ( res != 0 ) {
 			perror("Error (setting up IP_ADD_MEMBERSHIP failed)");
 			close(m_sockfd);
@@ -126,7 +135,7 @@ bool Sock::polling() {
 
 			if ( m_sockfd != -1 ) {
 				int res = read(m_sockfd, databuf, sizeof(databuf));
-				printf("received datagram (len=%d): %s\n",res,databuf);
+				printf("received datagram: %s\n",databuf);
 				if ( res < 0 ) {
 					perror("Error (reading message failed)");
 					close(m_sockfd);
@@ -163,7 +172,7 @@ bool Sock::polling(Sock &dst) {
 			int res;
 			if ( m_sockfd != -1 ) {
 				res = read(m_sockfd, databuf, sizeof(databuf));
-				printf("received datagram (len=%d): %s\n",res,databuf);
+				printf("received datagram: %s\n",databuf);
 				if ( res < 0 ) {
 					perror("Error (reading message failed)");
 					close(m_sockfd);
@@ -174,9 +183,9 @@ bool Sock::polling(Sock &dst) {
 			if ( dst.get_sockfd() != -1) {
 				sockaddr_in tmp = dst.get_addr();
 				res = sendto(dst.get_sockfd(), databuf, sizeof(databuf), 0,(sockaddr*)&tmp,sizeof(tmp));
-				printf("sendto (re-send) res = %d\n", res);
+				printf("re-sent datagram: %s\n\n",databuf);
 				if ( res < 0 ) {
-					perror("Error (re-sending multicast message failed)");
+					perror("Error (re-sending message failed)");
 					close(dst.get_sockfd());
 					return false;
 				}

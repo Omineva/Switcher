@@ -15,6 +15,7 @@ class Sock {
 
 	int m_sockfd;
 	sockaddr_in m_ipaddr;
+	sockaddr_in m_localip;
 
 public:
 	Sock();
@@ -22,7 +23,9 @@ public:
 	bool init(const addrStruct &ips);
 	int get_sockfd();
 	sockaddr_in get_addr();
+	sockaddr_in get_localIpAddr();
 	void set_addr(const sockaddr_in &ip);
+	void set_localIpAddr(const sockaddr_in &ip);
 	bool multicastIf(const in_addr &localInterface);
 	bool addMulticastGroup(const in_addr &local);
 	bool send(const char* databuf, const sockaddr_in dstaddr);

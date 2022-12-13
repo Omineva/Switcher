@@ -74,7 +74,7 @@ bool validatePort(char* str, sockaddr_in& addrInfoOut) {
 
 void usage() {
 
-	fprintf(stderr, "Usage: switcher [--mtg host port --iface name] \n\tOR [--src host port --dst host port --iface name] "
+	fprintf(stderr, "Usage: ./switcher [--src host port --dst host port --iface name] "
 			"\n\tOR [--send host port --iface name] \n\tOR [--recv host port --iface name]\n");
 	exit(1);
 }
@@ -86,7 +86,6 @@ bool isMulticast(const in_addr ip) {
 	return ( *first >= 224 && *first <= 239) ? true : false;
 }
 
-// check if exists named interface and returns it's ONLY first ip-adress
 bool getIpForIface(const char* iname, char* bufferOut, sockaddr_in& addrInfoOut) {
 
 	bool result = false;
@@ -147,26 +146,10 @@ void parseCmd(int argc, char *argv[], std::vector<addrStruct>& ipsOut, modes &mo
 
 		addrStruct tmp;
 
-		if( !strcmp(*ptr,"--mtg") ){
+		if( !strcmp(*ptr,"--send") ){
 			++ptr;
 
-			// check and save multicast IP address
-			if( !(*ptr) || !(validateIp(*ptr,tmp.addrInfo)) ) usage();
-			++ptr;
-
-			// check and save multicast port
-			if( !(*ptr) || !(validatePort(*ptr,tmp.addrInfo)) ) usage();
-
-			if( !(isMulticast(tmp.addrInfo.sin_addr)) ) usage();
-
-			tmp.key = multicast;
-			ipsOut.push_back(tmp);
-			modeOut = multicast_generator;
-
-		} else if( !strcmp(*ptr,"--send") ){
-			++ptr;
-
-			// parse dst host and port
+			// parse outbound host and port, save it to addrStruct
 			if( !(*ptr) || !(validateIp(*ptr,tmp.addrInfo))) usage();
 			++ptr;
 
@@ -181,6 +164,7 @@ void parseCmd(int argc, char *argv[], std::vector<addrStruct>& ipsOut, modes &mo
 			++ptr;
 			char buffer[INET_ADDRSTRLEN] = {0};
 
+			// check if exists named interface and returns it's ONLY first ip-adress
 			if( *ptr && getIpForIface(*ptr,buffer,tmp.addrInfo) ) {
 				printf("Using ip-address: %s\n",buffer);
 
@@ -194,6 +178,7 @@ void parseCmd(int argc, char *argv[], std::vector<addrStruct>& ipsOut, modes &mo
 		} else if( !strcmp(*ptr,"--recv") ){
 			++ptr;
 
+			// parse inbound host and port, save it to addrStruct
 			if( !(*ptr) || !(validateIp(*ptr,tmp.addrInfo))) usage();
 			++ptr;
 
@@ -206,11 +191,10 @@ void parseCmd(int argc, char *argv[], std::vector<addrStruct>& ipsOut, modes &mo
 		} else if( !strcmp(*ptr,"--src") ){
 			++ptr;
 
-			// check and save IP address
+			// parse src host and port, save it to addrStruct
 			if( !(*ptr) || !(validateIp(*ptr,tmp.addrInfo)) ) usage();
 			++ptr;
 
-			// check and save port
 			if( !(*ptr) || !(validatePort(*ptr,tmp.addrInfo)) ) usage();
 
 			tmp.key = src;
@@ -220,11 +204,10 @@ void parseCmd(int argc, char *argv[], std::vector<addrStruct>& ipsOut, modes &mo
 		} else if( !strcmp(*ptr,"--dst") ){
 			++ptr;
 
-			// check and save IP address
+			// parse dst host and port, save it to addrStruct
 			if( !(*ptr) || !(validateIp(*ptr,tmp.addrInfo))) usage();
 			++ptr;
 
-			// check and save port
 			if( !(*ptr) || !(validatePort(*ptr,tmp.addrInfo)) ) usage();
 
 			tmp.key = dst;

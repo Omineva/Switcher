@@ -1,0 +1,20 @@
+./switcher --send 127.0.0.1 7777 --iface lo
+./switcher --recv 239.10.10.10 5555 --iface lo
+./switcher --dst 239.10.10.10 5555 --src 127.0.0.1 7777 --iface lo
+
+./switcher --send 239.10.10.10 5555 --iface lo
+./switcher --recv 127.0.0.1 7777 --iface lo
+./switcher --src 239.10.10.10 5555 --dst 127.0.0.1 7777 --iface lo
+
+./switcher --send 192.168.7.22 7777 --iface wlp4s0
+./switcher --recv 239.10.10.10 5555 --iface wlp4s0
+./switcher --dst 239.10.10.10 5555 --src 192.168.7.22 7777 --iface wlp4s0
+
+./switcher --send 239.10.10.10 5555 --iface wlp4s0
+./switcher --recv 192.168.7.22 7777 --iface wlp4s0
+./switcher --src 239.10.10.10 5555 --dst 192.168.7.22 7777 --iface wlp4s0
+
+On different computers
+./switcher --send 239.10.10.10 5555 --iface enp0s3
+./switcher --recv 192.168.7.26 6666 --iface enp0s3
+./switcher --src 239.10.10.10 5555 --dst 192.168.7.26 6666 --iface wlp4s0
