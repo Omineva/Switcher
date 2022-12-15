@@ -70,6 +70,22 @@ void Sock::set_localIpAddr(const sockaddr_in &ip) {
 bool Sock::multicastIf(const in_addr &localInterface) {
 
 	if( m_sockfd != -1 ){
+
+//		int optval;
+//		socklen_t optlen = sizeof(optval);
+//		getsockopt(m_sockfd, IPPROTO_IP, IP_MULTICAST_LOOP,(char *)&optval, &optlen);
+//		printf("Sock::multicastIf (before set up IP_MULTICAST_LOOP) = %d\n",optval);
+//
+//		char loopch = 0;
+//		if( setsockopt(m_sockfd, IPPROTO_IP, IP_MULTICAST_LOOP,(char *)&loopch, sizeof(loopch)) != 0 ){
+//			perror("Error (setting up IP_MULTICAST_LOOP failed)");
+//			sockClose();
+//			return false;
+//		}
+//
+//		getsockopt(m_sockfd, IPPROTO_IP, IP_MULTICAST_LOOP,(char *)&optval, &optlen);
+//		printf("Sock::multicastIf (after set up IP_MULTICAST_LOOP) = %d\n",optval);
+
 		if( setsockopt(m_sockfd, IPPROTO_IP, IP_MULTICAST_IF,(char *)&localInterface,sizeof(localInterface)) != 0 ){
 			perror("Error (setting up multicast interface failed)");
 			sockClose();
@@ -122,6 +138,15 @@ bool Sock::polling() {
 	fds[0].fd = m_sockfd;
 	fds[0].events = POLLIN;
 
+	// check if srcaddr is multicast => to join a multicast group on a local interface to receive multicast datagrams
+	if( isMulticast(m_ipaddr.sin_addr) ){
+		if( !addMulticastGroup(m_localip.sin_addr) ){
+			printf("Can't join interface for receiving inbound multicast datagrams.\n");
+			sockClose();
+			exit(1);
+		}
+	}
+
 	while (true) {
 		if( poll(fds, numfds, timeout) > 0 ){
 			if( m_sockfd != -1 ){
@@ -151,6 +176,24 @@ bool Sock::polling(Sock &dst) {
 	memset(fds, 0, sizeof(fds));
 	fds[0].fd = m_sockfd;
 	fds[0].events = POLLIN;
+
+	// check if srcaddr is multicast => to join a multicast group on a local interface to receive multicast datagrams
+	if( isMulticast(m_ipaddr.sin_addr) ){
+		if( !addMulticastGroup(m_localip.sin_addr) ){
+			printf("Can't join interface for receiving inbound multicast datagrams.\n");
+			sockClose();
+			exit(1);
+		}
+	}
+
+	// check if dstaddr is multicast => to set the interface for sending outbound multicast datagrams
+	if( isMulticast(dst.get_addr().sin_addr) ){
+		if( !dst.multicastIf(dst.get_localIpAddr().sin_addr) ){
+			printf("Can't set interface for sending outbound multicast datagrams.\n");
+			dst.sockClose();
+			exit(1);
+		}
+	}
 
 	while (true) {
 		if( poll(fds, numfds, timeout) > 0 ){

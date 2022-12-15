@@ -84,7 +84,6 @@ int main(int argc, char *argv[]) {
 		if( argNum != 2 ) usage();
 
 		Sock incomingSock;
-		sockaddr_in localaddr;
 
 		for( size_t i = 0; i < argNum; ++i ){
 
@@ -97,19 +96,10 @@ int main(int argc, char *argv[]) {
 			}
 
 			if( ips[i].key == local ){
-				localaddr = ips[i].addrInfo;
+				incomingSock.set_localIpAddr(ips[i].addrInfo);
 			}
 
 			if( !(ips[i].key == local || ips[i].key == src) ) usage();
-		}
-
-		// check receiving from multicast group => to join a multicast group on a local interface to receive multicast datagrams
-		if( isMulticast(incomingSock.get_addr().sin_addr) ){
-			if( !incomingSock.addMulticastGroup(localaddr.sin_addr) ){
-				printf("Can't join interface for receiving inbound multicast datagrams.\n");
-				incomingSock.sockClose();
-				exit(1);
-			}
 		}
 
 		incomingSock.polling();
@@ -143,24 +133,6 @@ int main(int argc, char *argv[]) {
 			}
 
 			if( !(ips[i].key == src || ips[i].key == dst || ips[i].key == local) ) usage();
-		}
-
-		// check if srcaddr is multicast => to join a multicast group on a local interface to receive multicast datagrams
-		if( isMulticast(srcSock.get_addr().sin_addr) ){
-			if( !srcSock.addMulticastGroup(srcSock.get_localIpAddr().sin_addr) ){
-				printf("Can't join interface for receiving inbound multicast datagrams.\n");
-				srcSock.sockClose();
-				exit(1);
-			}
-		}
-
-		// check if dstaddr is multicast => to set the interface for sending outbound multicast datagrams
-		if( isMulticast(dstSock.get_addr().sin_addr) ){
-			if( !dstSock.multicastIf(dstSock.get_localIpAddr().sin_addr) ){
-				printf("Can't set interface for sending outbound multicast datagrams.\n");
-				dstSock.sockClose();
-				exit(1);
-			}
 		}
 
 		srcSock.polling(dstSock);
